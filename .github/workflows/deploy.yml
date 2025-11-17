@@ -40,24 +40,21 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # BƯỚC BUILD VÀ PUSH (Đã sửa lỗi build/push syntax)
+      # BƯỚC BUILD VÀ PUSH 
       - name: Build and push Docker images
         run: |
-          docker-compose -f docker-compose.yml build ${{ env.BUILD_SERVICE }}
-          docker-compose -f docker-compose.yml push ${{ env.BUILD_SERVICE }}
+          docker-compose -f docker-compose.yml build ${{ env.BUILD_SERVICE }} frontend-myapp
+          docker-compose -f docker-compose.yml push ${{ env.BUILD_SERVICE }} frontend-myapp
           
       # BƯỚC TRIỂN KHAI (DEPLOY) - SSH vào EC2
       - name: Deploy to production server
         uses: appleboy/ssh-action@v1.0.3
-        env:
-          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USERNAME }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
-            # THÊM BƯỚC CÀI ĐẶT DOCKER COMPOSE TRÊN EC2 INSTANCE (KHẮC PHỤC LỖI COMMAND NOT FOUND)
+            # Cài đặt Docker Compose trên EC2 INSTANCE
             sudo curl -L "https://github.com/docker/compose/releases/download/v2.20.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
             sudo chmod +x /usr/local/bin/docker-compose
             
@@ -73,15 +70,17 @@ jobs:
               exit 1;
             }
             
-            # [cite_start]4. Login to Docker Hub trên server EC2 [cite: 135]
-            echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin
+            # 4. Login to Docker Hub trên server EC2 (KHẮC PHỤC LỖI USERNAME IS EMPTY)
+            echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
             
             # [cite_start]5. Kéo image mới nhất [cite: 137]
             docker-compose pull
             
             # [cite_start]6. Stop and remove old containers [cite: 139-140]
-            docker ps -a --filter "name=${{ env.CONTAINER_NAME }}" --format '{{.ID}}' | xargs -r docker stop || true
-            docker ps -a --filter "name=${{ env.CONTAINER_NAME }}" --format '{{.ID}}' | xargs -r docker rm || true
+            docker ps -a --filter "name=myapp-backend-node" --format '{{.ID}}' | xargs -r docker stop || true
+            docker ps -a --filter "name=myapp-backend-node" --format '{{.ID}}' | xargs -r docker rm || true
+            docker ps -a --filter "name=myapp-frontend-nginx" --format '{{.ID}}' | xargs -r docker stop || true
+            docker ps -a --filter "name=myapp-frontend-nginx" --format '{{.ID}}' | xargs -r docker rm || true
             
             # [cite_start]7. Start containers [cite: 142]
             docker-compose up -d
