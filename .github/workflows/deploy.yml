@@ -9,10 +9,16 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     
-    # Thiết lập biến môi trường cho việc build và push (theo hướng dẫn)
+    # Cấp quyền cho việc đọc/ghi gói (push image)
+    permissions:
+      contents: read
+      packages: write
+      
+    # Thiết lập biến môi trường cho việc build
     env:
-      BUILD_SERVICE: backend-myapp # Tên Service trong docker-compose.yml local
-      IMAGE_NAME: tanhuynh24/myapp:latest # Tên Image trên Docker Hub
+      BUILD_SERVICE: backend-myapp
+      IMAGE_NAME: tanhuynh24/myapp:latest
+      CONTAINER_NAME: myapp-backend-node
 
     steps:
       - name: Checkout code
@@ -23,7 +29,7 @@ jobs:
 
       - name: Install Docker Compose
         run: |
-          # Cài đặt Docker Compose v2.20.0 trên GitHub Runner
+          # [cite_start]Cài đặt Docker Compose v2.20.0 trên GitHub Runner [cite: 81-84]
           sudo curl -L "https://github.com/docker/compose/releases/download/v2.20.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
           sudo chmod +x /usr/local/bin/docker-compose
           docker-compose --version
@@ -34,17 +40,14 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build and push Docker images
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          # Dùng file docker-compose.yml cục bộ (phải có lệnh build:)
-          file: ./docker-compose.yml
-          push: true
-          # Tags sử dụng tên image và tag đã thống nhất
-          tags: ${{ env.IMAGE_NAME }}
-          # Chỉ push service 'backend-myapp'
-          services: ${{ env.BUILD_SERVICE }}
+      # BƯỚC BUILD VÀ PUSH ĐÃ SỬA LỖI (Dùng lệnh run thay vì action bị lỗi)
+      - name: Build and push Docker images (Fixed)
+        run: |
+          # 1. Build images từ docker-compose.yml cục bộ
+          docker-compose -f docker-compose.yml build ${{ env.BUILD_SERVICE }}
+
+          # 2. Push images lên Docker Hub
+          docker-compose -f docker-compose.yml push ${{ env.BUILD_SERVICE }}
           
       # BƯỚC TRIỂN KHAI (DEPLOY) - SSH vào EC2
       - name: Deploy to production server
@@ -63,7 +66,7 @@ jobs:
             # 2. Ghi file docker-compose.yml từ Secret DOCKER_COMPOSE_FILE
             echo "${{ secrets.DOCKER_COMPOSE_FILE }}" > docker-compose.yml
             
-            # 3. Kiểm tra tính hợp lệ của file (Quan trọng)
+            # 3. Kiểm tra tính hợp lệ của file
             docker-compose config || {
               echo "Error in Docker Compose file:";
               docker-compose config;
@@ -77,8 +80,8 @@ jobs:
             docker-compose pull
             
             # 6. Stop and remove old containers (Sử dụng tên container đã đặt: myapp-backend-node)
-            docker ps -a --filter "name=myapp-backend-node" --format '{{.ID}}' | xargs -r docker stop || true
-            docker ps -a --filter "name=myapp-backend-node" --format '{{.ID}}' | xargs -r docker rm || true
+            docker ps -a --filter "name=${{ env.CONTAINER_NAME }}" --format '{{.ID}}' | xargs -r docker stop || true
+            docker ps -a --filter "name=${{ env.CONTAINER_NAME }}" --format '{{.ID}}' | xargs -r docker rm || true
             
             # 7. Start containers
             docker-compose up -d
@@ -86,7 +89,7 @@ jobs:
             # 8. Clean up old images
             docker image prune -f
             
-            # 9. Wait for containers to start and verify deployment
+            # [cite_start]9. Wait for containers to start and verify deployment [cite: 146-151]
             timeout 60 bash -c '
             until docker-compose ps | grep "Up"; do
               echo "Waiting for containers to start...";
@@ -96,5 +99,4 @@ jobs:
             
       - name: Cleanup
         if: always()
-        run: |
-          docker logout
+        run: docker logout
