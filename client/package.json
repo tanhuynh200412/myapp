@@ -1,0 +1,16 @@
+{
+  "name": "myapp-frontend",
+  "version": "1.0.0",
+  "description": "Frontend application for myapp",
+  "main": "index.js",
+  "scripts": {
+    "build": "echo 'Building frontend...' && mkdir -p dist && echo 'Frontend content' > dist/index.html",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "react": "^18.2.0"
+  },
+  "devDependencies": {
+    "webpack": "^5.89.0"
+  }
+}
