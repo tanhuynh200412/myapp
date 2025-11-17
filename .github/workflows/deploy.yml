@@ -9,12 +9,12 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     
-    # Cấp quyền cho việc đọc/ghi gói (push image)
+    # [cite_start]Cấp quyền cho việc đọc/ghi gói (push image) [cite: 168-170]
     permissions:
       contents: read
       packages: write
       
-    # Thiết lập biến môi trường cho việc build
+    # Thiết lập biến môi trường
     env:
       BUILD_SERVICE: backend-myapp
       IMAGE_NAME: tanhuynh24/myapp:latest
@@ -40,13 +40,10 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # BƯỚC BUILD VÀ PUSH ĐÃ SỬA LỖI (Dùng lệnh run thay vì action bị lỗi)
-      - name: Build and push Docker images (Fixed)
+      # BƯỚC BUILD VÀ PUSH (Đã sửa lỗi build/push syntax)
+      - name: Build and push Docker images
         run: |
-          # 1. Build images từ docker-compose.yml cục bộ
           docker-compose -f docker-compose.yml build ${{ env.BUILD_SERVICE }}
-
-          # 2. Push images lên Docker Hub
           docker-compose -f docker-compose.yml push ${{ env.BUILD_SERVICE }}
           
       # BƯỚC TRIỂN KHAI (DEPLOY) - SSH vào EC2
@@ -60,33 +57,36 @@ jobs:
           username: ${{ secrets.SERVER_USERNAME }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
-            # 1. Di chuyển vào thư mục làm việc đã tạo trên EC2
-            cd myapp
+            # THÊM BƯỚC CÀI ĐẶT DOCKER COMPOSE TRÊN EC2 INSTANCE (KHẮC PHỤC LỖI COMMAND NOT FOUND)
+            sudo curl -L "https://github.com/docker/compose/releases/download/v2.20.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+            sudo chmod +x /usr/local/bin/docker-compose
+            
+            cd myapp # Di chuyển vào thư mục làm việc đã tạo trên EC2
             
             # 2. Ghi file docker-compose.yml từ Secret DOCKER_COMPOSE_FILE
             echo "${{ secrets.DOCKER_COMPOSE_FILE }}" > docker-compose.yml
             
-            # 3. Kiểm tra tính hợp lệ của file
+            # [cite_start]3. Kiểm tra tính hợp lệ của file [cite: 129]
             docker-compose config || {
               echo "Error in Docker Compose file:";
               docker-compose config;
               exit 1;
             }
             
-            # 4. Login to Docker Hub trên server EC2
+            # [cite_start]4. Login to Docker Hub trên server EC2 [cite: 135]
             echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin
             
-            # 5. Kéo image mới nhất
+            # [cite_start]5. Kéo image mới nhất [cite: 137]
             docker-compose pull
             
-            # 6. Stop and remove old containers (Sử dụng tên container đã đặt: myapp-backend-node)
+            # [cite_start]6. Stop and remove old containers [cite: 139-140]
             docker ps -a --filter "name=${{ env.CONTAINER_NAME }}" --format '{{.ID}}' | xargs -r docker stop || true
             docker ps -a --filter "name=${{ env.CONTAINER_NAME }}" --format '{{.ID}}' | xargs -r docker rm || true
             
-            # 7. Start containers
+            # [cite_start]7. Start containers [cite: 142]
             docker-compose up -d
             
-            # 8. Clean up old images
+            # [cite_start]8. Clean up old images [cite: 144]
             docker image prune -f
             
             # [cite_start]9. Wait for containers to start and verify deployment [cite: 146-151]
