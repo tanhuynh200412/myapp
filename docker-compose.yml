@@ -1,11 +1,22 @@
 version: '3.8'
 services:
-  backend-myapp: # <-- Tên service này khớp với 'docker-compose push backend-myapp'
-    build:       # <-- Lệnh 'build' để GitHub Actions xây dựng image
+  # Backend Service (Giữ nguyên)
+  backend-myapp:
+    build:
       context: .
       dockerfile: Dockerfile
     image: tanhuynh24/myapp:latest
     container_name: myapp-backend-node
+    networks:
+      - app-network
+
+  # Frontend Service (Mới)
+  frontend-myapp: # <-- Tên service mới để BUILD/PUSH
+    build:
+      context: .
+      dockerfile: client/Dockerfile # <-- Chỉ định Dockerfile mới
+    image: tanhuynh24/myapp-frontend:latest # <-- Tên image Frontend
+    container_name: myapp-frontend-nginx
     networks:
       - app-network
       
