@@ -18,7 +18,9 @@ jobs:
     env:
       BUILD_SERVICE: backend-myapp
       IMAGE_NAME: tanhuynh24/myapp:latest
-      CONTAINER_NAME: myapp-backend-node
+      # Đã mở rộng để bao gồm cả Frontend
+      CONTAINER_NAME_BACKEND: myapp-backend-node
+      CONTAINER_NAME_FRONTEND: myapp-frontend-nginx
 
     steps:
       - name: Checkout code
@@ -29,7 +31,7 @@ jobs:
 
       - name: Install Docker Compose
         run: |
-          # [cite_start]Cài đặt Docker Compose v2.20.0 trên GitHub Runner [cite: 81-84]
+          # [cite_start]Cài đặt Docker Compose v2.20.0 trên GitHub Runner [cite: 81-84, 184-187]
           sudo curl -L "https://github.com/docker/compose/releases/download/v2.20.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
           sudo chmod +x /usr/local/bin/docker-compose
           docker-compose --version
@@ -40,7 +42,7 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # BƯỚC BUILD VÀ PUSH 
+      # BƯỚC BUILD VÀ PUSH CHO CẢ BACKEND VÀ FRONTEND
       - name: Build and push Docker images
         run: |
           docker-compose -f docker-compose.yml build ${{ env.BUILD_SERVICE }} frontend-myapp
@@ -54,7 +56,7 @@ jobs:
           username: ${{ secrets.SERVER_USERNAME }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
-            # Cài đặt Docker Compose trên EC2 INSTANCE
+            # THÊM BƯỚC CÀI ĐẶT DOCKER COMPOSE TRÊN EC2 INSTANCE (KHẮC PHỤC LỖI COMMAND NOT FOUND)
             sudo curl -L "https://github.com/docker/compose/releases/download/v2.20.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
             sudo chmod +x /usr/local/bin/docker-compose
             
@@ -77,10 +79,10 @@ jobs:
             docker-compose pull
             
             # [cite_start]6. Stop and remove old containers [cite: 139-140]
-            docker ps -a --filter "name=myapp-backend-node" --format '{{.ID}}' | xargs -r docker stop || true
-            docker ps -a --filter "name=myapp-backend-node" --format '{{.ID}}' | xargs -r docker rm || true
-            docker ps -a --filter "name=myapp-frontend-nginx" --format '{{.ID}}' | xargs -r docker stop || true
-            docker ps -a --filter "name=myapp-frontend-nginx" --format '{{.ID}}' | xargs -r docker rm || true
+            docker ps -a --filter "name=${{ env.CONTAINER_NAME_BACKEND }}" --format '{{.ID}}' | xargs -r docker stop || true
+            docker ps -a --filter "name=${{ env.CONTAINER_NAME_BACKEND }}" --format '{{.ID}}' | xargs -r docker rm || true
+            docker ps -a --filter "name=${{ env.CONTAINER_NAME_FRONTEND }}" --format '{{.ID}}' | xargs -r docker stop || true
+            docker ps -a --filter "name=${{ env.CONTAINER_NAME_FRONTEND }}" --format '{{.ID}}' | xargs -r docker rm || true
             
             # [cite_start]7. Start containers [cite: 142]
             docker-compose up -d
@@ -88,7 +90,7 @@ jobs:
             # [cite_start]8. Clean up old images [cite: 144]
             docker image prune -f
             
-            # [cite_start]9. Wait for containers to start and verify deployment [cite: 146-151]
+            # [cite_start]9. Wait for containers to start and verify deployment [cite: 146-151, 275]
             timeout 60 bash -c '
             until docker-compose ps | grep "Up"; do
               echo "Waiting for containers to start...";
