@@ -4,9 +4,9 @@
   "description": "Frontend application for myapp",
   "main": "index.js",
   "scripts": {
-    "build": "echo 'Building frontend...' && mkdir -p dist && echo 'Frontend content' > dist/index.html",
+    "build": "mkdir -p dist && cp src/index.js dist/index.js && cp src/components/Auth.js dist/Auth.js && cp public/index.html dist/index.html",
     "test": "echo \"Error: no test specified\" && exit 1"
-  },
+},
   "dependencies": {
     "react": "^18.2.0"
   },
