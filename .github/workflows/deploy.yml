@@ -63,8 +63,8 @@ jobs:
             
             cd myapp # Di chuyển vào thư mục làm việc đã tạo trên EC2
             
-            # 2. Ghi file docker-compose.yml từ Secret DOCKER_COMPOSE_FILE
-            echo "${{ secrets.DOCKER_COMPOSE_FILE }}" > docker-compose.yml
+            # 2. Ghi file docker-compose.yml từ Secret DOCKER_COMPOSE_FILE (Sử dụng Base64 an toàn)
+            echo "${{ secrets.DOCKER_COMPOSE_FILE }}" | base64 -d > docker-compose.yml
             
             # [cite_start]3. Kiểm tra tính hợp lệ của file [cite: 129]
             docker-compose config || {
