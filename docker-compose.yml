@@ -1,0 +1,19 @@
+version: '3.8'
+services:
+  backend:
+    # Image đã push lên Docker Hub
+    image: tanhuynh24/myapp:latest
+    container_name: myapp-backend-node
+    ports:
+      - 5005:3000 # Cổng Public (5005) ánh xạ tới cổng Node.js (3000)
+    environment:
+      - NODE_ENV=Production
+      # Biến môi trường DB được truyền vào từ Secret DB_CONNECTION_STRING
+      - DB_CONNECTION_STRING=${DB_CONNECTION_STRING}
+    networks:
+      - app-network
+    restart: always
+
+networks:
+  app-network:
+    driver: bridge
