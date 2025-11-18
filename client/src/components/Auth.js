@@ -58,6 +58,7 @@ async function handleAuth(action) {
         console.error('Fetch Error:', error);
     }
 }
+window.handleAuth = handleAuth;
 
 // Export hàm handleAuth để nó có thể được gọi từ index.js hoặc HTML
 // (Trong trường hợp này, chúng ta sẽ gắn nó vào window trong index.js)
